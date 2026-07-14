@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ReserveInventoryWorker.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">service</a> &gt; <a href="index.source.html" class="el_package">com.example.orderfulfilment.service.worker</a> &gt; <span class="el_source">ReserveInventoryWorker.java</span></div><h1>ReserveInventoryWorker.java</h1><pre class="source lang-java linenums">package com.example.orderfulfilment.service.worker;
+
+import com.example.orderfulfilment.service.domain.OrderService;
+import com.example.orderfulfilment.service.entity.OrderStatus;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.camunda.bpm.client.task.ExternalTask;
+import org.springframework.stereotype.Component;
+
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * External task worker for topic: reserve-inventory
+ *
+ * Runs in parallel with GenerateInvoiceWorker after credit is secured.
+ * Simulates inventory reservation — log-based implementation.
+ * Updates order status to reflect fulfilment progress.
+ */
+@Component
+@RequiredArgsConstructor
+<span class="fc" id="L22">@Slf4j</span>
+public class ReserveInventoryWorker extends BaseExternalTaskWorker {
+
+    private final OrderService orderService;
+
+    @Override
+    public String getTopicName() {
+<span class="fc" id="L29">        return &quot;reserve-inventory&quot;;</span>
+    }
+
+    @Override
+    protected Map&lt;String, Object&gt; executeTask(ExternalTask task) {
+<span class="fc" id="L34">        String orderId      = task.getVariable(&quot;orderId&quot;);</span>
+<span class="fc" id="L35">        String customerId   = task.getVariable(&quot;customerId&quot;);</span>
+<span class="fc" id="L36">        Double amount       = task.getVariable(&quot;amount&quot;);</span>
+
+<span class="fc" id="L38">        log.info(&quot;[ReserveInventory] Reserving inventory for orderId={} customerId={} amount={}&quot;,</span>
+                orderId, customerId, amount);
+
+        // Simulated reservation — in production this would call inventory service
+<span class="fc" id="L42">        String reservationRef = &quot;INV-&quot; + orderId.substring(0, 8).toUpperCase();</span>
+<span class="fc" id="L43">        log.info(&quot;[ReserveInventory] Inventory reserved — ref={} orderId={}&quot;, reservationRef, orderId);</span>
+
+        // Status update to APPROVED if currently AUTO_APPROVED (parallel branch — idempotent)
+        try {
+<span class="fc" id="L47">            OrderStatus currentStatus = orderService.findById(UUID.fromString(orderId)).getStatus();</span>
+<span class="pc bpc" id="L48" title="3 of 4 branches missed.">            if (currentStatus == OrderStatus.AUTO_APPROVED || currentStatus == OrderStatus.APPROVED) {</span>
+                // Leave status as-is; FULFILLED is set by SendSmsWorker / SendEmailWorker after notifications
+<span class="fc" id="L50">                log.debug(&quot;[ReserveInventory] Order {} status is {} — no update needed&quot;, orderId, currentStatus);</span>
+            }
+<span class="nc" id="L52">        } catch (Exception ex) {</span>
+<span class="nc" id="L53">            log.warn(&quot;[ReserveInventory] Could not check order status for {}: {}&quot;, orderId, ex.getMessage());</span>
+<span class="fc" id="L54">        }</span>
+
+<span class="fc" id="L56">        return Map.of(</span>
+                &quot;inventoryReservationRef&quot;, reservationRef,
+<span class="fc" id="L58">                &quot;inventoryReserved&quot;, true</span>
+        );
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

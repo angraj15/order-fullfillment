@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+
+  # ============================================
+  # Camunda 7 BPM Platform — Standalone Engine
+  # ============================================
+  camunda:
+    image: camunda/camunda-bpm-platform:run-7.21.0
+    container_name: camunda-engine
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/engine-rest/engine"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+    restart: unless-stopped
+
+  # ============================================
+  # Spring Boot Backend (Java 21)
+  # ============================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: order-fulfilment-backend
+    ports:
+      - "8080:8080"
+    environment:
+      CAMUNDA_URL: http://camunda:8080/engine-rest
+      TIMER_DURATION: PT2M
+      SPRING_PROFILES_ACTIVE: dev
+    depends_on:
+      camunda:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ============================================
+  # Angular 22 Frontend (Nginx)
+  # ============================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: order-fulfilment-frontend
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

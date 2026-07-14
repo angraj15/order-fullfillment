@@ -1,0 +1,21 @@
+plugins {
+    id 'boot-application'
+}
+
+dependencies {
+    implementation project(':api')
+    implementation project(':service')
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.6.0'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+springBoot {
+    mainClass = 'com.example.orderfulfilment.OrderFulfilmentApplication'
+}
+
+bootJar {
+    archiveFileName = 'order-fulfilment-app.jar'
+}

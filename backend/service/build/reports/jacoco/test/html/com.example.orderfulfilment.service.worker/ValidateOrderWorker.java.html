@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ValidateOrderWorker.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">service</a> &gt; <a href="index.source.html" class="el_package">com.example.orderfulfilment.service.worker</a> &gt; <span class="el_source">ValidateOrderWorker.java</span></div><h1>ValidateOrderWorker.java</h1><pre class="source lang-java linenums">package com.example.orderfulfilment.service.worker;
+
+import com.example.orderfulfilment.service.domain.OrderService;
+import com.example.orderfulfilment.service.entity.OrderStatus;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.camunda.bpm.client.task.ExternalTask;
+import org.springframework.stereotype.Component;
+
+import java.util.Map;
+import java.util.UUID;
+
+/**
+ * External task worker for topic: validate-order
+ *
+ * Validates the order payload received via process variables.
+ * Sets validationResult (VALID/INVALID) and validationReason.
+ * Updates local order status to VALIDATING (valid) or REJECTED (invalid).
+ */
+@Component
+@RequiredArgsConstructor
+<span class="fc" id="L22">@Slf4j</span>
+public class ValidateOrderWorker extends BaseExternalTaskWorker {
+
+    private final OrderService orderService;
+
+    @Override
+    public String getTopicName() {
+<span class="fc" id="L29">        return &quot;validate-order&quot;;</span>
+    }
+
+    @Override
+    protected Map&lt;String, Object&gt; executeTask(ExternalTask task) {
+<span class="fc" id="L34">        String orderId      = task.getVariable(&quot;orderId&quot;);</span>
+<span class="fc" id="L35">        String customerId   = task.getVariable(&quot;customerId&quot;);</span>
+<span class="fc" id="L36">        String customerName = task.getVariable(&quot;customerName&quot;);</span>
+<span class="fc" id="L37">        Double amount       = task.getVariable(&quot;amount&quot;);</span>
+
+<span class="fc" id="L39">        log.debug(&quot;[ValidateOrder] orderId={} customerId={} amount={}&quot;, orderId, customerId, amount);</span>
+
+<span class="fc" id="L41">        ValidationResult result = validate(customerId, customerName, amount);</span>
+
+<span class="fc bfc" id="L43" title="All 2 branches covered.">        OrderStatus newStatus = result.isValid() ? OrderStatus.VALIDATING : OrderStatus.REJECTED;</span>
+<span class="fc" id="L44">        orderService.updateStatus(UUID.fromString(orderId), newStatus, result.reason());</span>
+
+<span class="fc" id="L46">        log.info(&quot;[ValidateOrder] orderId={} result={} reason='{}'&quot;,</span>
+<span class="fc bfc" id="L47" title="All 2 branches covered.">                orderId, result.isValid() ? &quot;VALID&quot; : &quot;INVALID&quot;, result.reason());</span>
+
+<span class="fc" id="L49">        return Map.of(</span>
+<span class="fc bfc" id="L50" title="All 2 branches covered.">                &quot;validationResult&quot;, result.isValid() ? &quot;VALID&quot; : &quot;INVALID&quot;,</span>
+<span class="pc bpc" id="L51" title="1 of 2 branches missed.">                &quot;validationReason&quot;, result.reason() != null ? result.reason() : &quot;&quot;</span>
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Validation logic — kept package-friendly for unit testing
+    // -------------------------------------------------------------------------
+
+    ValidationResult validate(String customerId, String customerName, Double amount) {
+<span class="fc bfc" id="L60" title="All 4 branches covered.">        if (customerId == null || customerId.isBlank()) {</span>
+<span class="fc" id="L61">            return ValidationResult.invalid(&quot;customerId is required&quot;);</span>
+        }
+<span class="fc bfc" id="L63" title="All 4 branches covered.">        if (customerName == null || customerName.isBlank()) {</span>
+<span class="fc" id="L64">            return ValidationResult.invalid(&quot;customerName is required&quot;);</span>
+        }
+<span class="fc bfc" id="L66" title="All 4 branches covered.">        if (amount == null || amount &lt;= 0) {</span>
+<span class="fc" id="L67">            return ValidationResult.invalid(&quot;amount must be a positive value&quot;);</span>
+        }
+<span class="fc" id="L69">        return ValidationResult.valid();</span>
+    }
+
+    // -------------------------------------------------------------------------
+    // Result value object
+    // -------------------------------------------------------------------------
+
+<span class="fc" id="L76">    public record ValidationResult(boolean isValid, String reason) {</span>
+<span class="fc" id="L77">        static ValidationResult valid()              { return new ValidationResult(true, &quot;Order is valid&quot;); }</span>
+<span class="fc" id="L78">        static ValidationResult invalid(String why)  { return new ValidationResult(false, why); }</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<meta http-equiv="x-ua-compatible" content="IE=edge"/>
+<title>Test results - ValidateOrderWorker</title>
+<link href="../css/base-style.css" rel="stylesheet" type="text/css"/>
+<link href="../css/style.css" rel="stylesheet" type="text/css"/>
+<script src="../js/report.js" type="text/javascript"></script>
+</head>
+<body>
+<div id="content">
+<h1>ValidateOrderWorker</h1>
+<div class="breadcrumbs">
+<a href="../index.html">all</a> &gt; 
+<a href="../packages/com.example.orderfulfilment.service.worker.html">com.example.orderfulfilment.service.worker</a> &gt; ValidateOrderWorkerTest</div>
+<div id="summary">
+<table>
+<tr>
+<td>
+<div class="summaryGroup">
+<table>
+<tr>
+<td>
+<div class="infoBox" id="tests">
+<div class="counter">6</div>
+<p>tests</p>
+</div>
+</td>
+<td>
+<div class="infoBox" id="failures">
+<div class="counter">0</div>
+<p>failures</p>
+</div>
+</td>
+<td>
+<div class="infoBox" id="ignored">
+<div class="counter">0</div>
+<p>ignored</p>
+</div>
+</td>
+<td>
+<div class="infoBox" id="duration">
+<div class="counter">0.017s</div>
+<p>duration</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</td>
+<td>
+<div class="infoBox success" id="successRate">
+<div class="percent">100%</div>
+<p>successful</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div id="tabs">
+<ul class="tabLinks">
+<li>
+<a href="#tab0">Tests</a>
+</li>
+<li>
+<a href="#tab1">Standard output</a>
+</li>
+</ul>
+<div id="tab0" class="tab">
+<h2>Tests</h2>
+<table>
+<thead>
+<tr>
+<th>Test</th>
+<th>Method name</th>
+<th>Duration</th>
+<th>Result</th>
+</tr>
+</thead>
+<tr>
+<td class="success">blank customerName should return INVALID</td>
+<td class="success">blankCustomerName_returnsInvalid()</td>
+<td class="success">0.004s</td>
+<td class="success">passed</td>
+</tr>
+<tr>
+<td class="success">negative amount should return INVALID</td>
+<td class="success">negativeAmount_returnsInvalid()</td>
+<td class="success">0.003s</td>
+<td class="success">passed</td>
+</tr>
+<tr>
+<td class="success">null customerId should return INVALID</td>
+<td class="success">nullCustomerId_returnsInvalid()</td>
+<td class="success">0.003s</td>
+<td class="success">passed</td>
+</tr>
+<tr>
+<td class="success">valid payload should return VALID result and update status to VALIDATING</td>
+<td class="success">validPayload_returnsValid()</td>
+<td class="success">0.002s</td>
+<td class="success">passed</td>
+</tr>
+<tr>
+<td class="success">validate() method — unit test of pure logic without mocks</td>
+<td class="success">validateMethod_directTest()</td>
+<td class="success">0.002s</td>
+<td class="success">passed</td>
+</tr>
+<tr>
+<td class="success">zero amount should return INVALID</td>
+<td class="success">zeroAmount_returnsInvalid()</td>
+<td class="success">0.003s</td>
+<td class="success">passed</td>
+</tr>
+</table>
+</div>
+<div id="tab1" class="tab">
+<h2>Standard output</h2>
+<span class="code">
+<pre>13:49:15.643 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=validate-order] START orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009 taskId=null
+13:49:15.644 [Test worker] INFO com.example.orderfulfilment.service.worker.ValidateOrderWorker -- [ValidateOrder] orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009 result=INVALID reason='customerName is required'
+13:49:15.645 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=validate-order] COMPLETE orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009
+13:49:15.649 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=validate-order] START orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009 taskId=null
+13:49:15.650 [Test worker] INFO com.example.orderfulfilment.service.worker.ValidateOrderWorker -- [ValidateOrder] orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009 result=VALID reason='Order is valid'
+13:49:15.650 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=validate-order] COMPLETE orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009
+13:49:15.652 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=validate-order] START orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009 taskId=null
+13:49:15.653 [Test worker] INFO com.example.orderfulfilment.service.worker.ValidateOrderWorker -- [ValidateOrder] orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009 result=INVALID reason='amount must be a positive value'
+13:49:15.653 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=validate-order] COMPLETE orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009
+13:49:15.655 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=validate-order] START orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009 taskId=null
+13:49:15.656 [Test worker] INFO com.example.orderfulfilment.service.worker.ValidateOrderWorker -- [ValidateOrder] orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009 result=INVALID reason='customerId is required'
+13:49:15.656 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=validate-order] COMPLETE orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009
+13:49:15.658 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=validate-order] START orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009 taskId=null
+13:49:15.659 [Test worker] INFO com.example.orderfulfilment.service.worker.ValidateOrderWorker -- [ValidateOrder] orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009 result=INVALID reason='amount must be a positive value'
+13:49:15.659 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=validate-order] COMPLETE orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009
+</pre>
+</span>
+</div>
+</div>
+<div id="footer">
+<p>
+<div>
+<label class="hidden" id="label-for-line-wrapping-toggle" for="line-wrapping-toggle">Wrap lines
+<input id="line-wrapping-toggle" type="checkbox" autocomplete="off"/>
+</label>
+</div>Generated by 
+<a href="http://www.gradle.org">Gradle 8.10</a> at 14-Jul-2026, 1:49:15 pm</p>
+</div>
+</div>
+</body>
+</html>

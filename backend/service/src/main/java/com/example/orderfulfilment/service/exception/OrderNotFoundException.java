@@ -1,0 +1,14 @@
+package com.example.orderfulfilment.service.exception;
+
+import java.util.UUID;
+
+public class OrderNotFoundException extends RuntimeException {
+
+    public OrderNotFoundException(UUID id) {
+        super("Order not found: " + id);
+    }
+
+    public OrderNotFoundException(String processInstanceId) {
+        super("Order not found for process instance: " + processInstanceId);
+    }
+}

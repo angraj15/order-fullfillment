@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="OrderService" tests="7" skipped="0" failures="0" errors="0" timestamp="2026-07-14T08:19:14" hostname="Angrajs-MacBook-Air.local" time="1.266">
+  <properties/>
+  <testcase name="findById with non-existent ID should throw OrderNotFoundException" classname="com.example.orderfulfilment.service.domain.OrderServiceTest" time="1.206"/>
+  <testcase name="createOrder should persist order and start Camunda process" classname="com.example.orderfulfilment.service.domain.OrderServiceTest" time="0.039"/>
+  <testcase name="updateStatus to FULFILLED should publish OrderFulfilledEvent" classname="com.example.orderfulfilment.service.domain.OrderServiceTest" time="0.004"/>
+  <testcase name="updateStatus with invalid transition should throw InvalidStatusTransitionException" classname="com.example.orderfulfilment.service.domain.OrderServiceTest" time="0.004"/>
+  <testcase name="amount &gt; 1000 should result in VALIDATING -&gt; PENDING_OVERRIDE path" classname="com.example.orderfulfilment.service.domain.OrderServiceTest" time="0.002"/>
+  <testcase name="amount &lt;= 1000 should result in VALIDATING -&gt; AUTO_APPROVED path" classname="com.example.orderfulfilment.service.domain.OrderServiceTest" time="0.002"/>
+  <testcase name="updateStatus with valid transition should succeed" classname="com.example.orderfulfilment.service.domain.OrderServiceTest" time="0.002"/>
+  <system-out><![CDATA[13:49:15.453 [Test worker] INFO com.example.orderfulfilment.service.domain.OrderService -- Order ed6f6cfd-d996-4fc7-9f73-d30f670a5392 created with status RECEIVED
+13:49:15.458 [Test worker] INFO com.example.orderfulfilment.service.domain.OrderService -- Process instance proc-123 started for order ed6f6cfd-d996-4fc7-9f73-d30f670a5392
+13:49:15.483 [Test worker] INFO com.example.orderfulfilment.service.domain.OrderService -- Order b37102df-0079-4f33-8f9d-91730d9e5b9b status: FULFILLED -> FULFILLED
+13:49:15.484 [Test worker] INFO com.example.orderfulfilment.service.domain.OrderService -- OrderFulfilledEvent published for order b37102df-0079-4f33-8f9d-91730d9e5b9b
+13:49:15.492 [Test worker] INFO com.example.orderfulfilment.service.domain.OrderService -- Order 7aec31fc-47b1-4294-8c13-79630ec84d65 status: PENDING_OVERRIDE -> PENDING_OVERRIDE
+13:49:15.494 [Test worker] INFO com.example.orderfulfilment.service.domain.OrderService -- Order 767fd5f7-76d8-469a-b834-15b8bf8f49ef status: AUTO_APPROVED -> AUTO_APPROVED
+13:49:15.497 [Test worker] INFO com.example.orderfulfilment.service.domain.OrderService -- Order d569939e-ea52-4051-83aa-ec42c8afb0f6 status: PENDING_OVERRIDE -> PENDING_OVERRIDE
+]]></system-out>
+  <system-err><![CDATA[WARNING: A Java agent has been loaded dynamically (/Users/angraj/.gradle/caches/modules-2/files-2.1/net.bytebuddy/byte-buddy-agent/1.14.19/154da3a65b4f4a909d3e5bdec55d1b2b4cbb6ce1/byte-buddy-agent-1.14.19.jar)
+WARNING: If a serviceability tool is in use, please run with -XX:+EnableDynamicAgentLoading to hide this warning
+WARNING: If a serviceability tool is not in use, please run with -Djdk.instrument.traceUsage for more information
+WARNING: Dynamic loading of agents will be disallowed by default in a future release
+]]></system-err>
+</testsuite>

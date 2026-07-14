@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>OrderService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">service</a> &gt; <a href="index.source.html" class="el_package">com.example.orderfulfilment.service.domain</a> &gt; <span class="el_source">OrderService.java</span></div><h1>OrderService.java</h1><pre class="source lang-java linenums">package com.example.orderfulfilment.service.domain;
+
+import com.example.orderfulfilment.service.client.CamundaRestClient;
+import com.example.orderfulfilment.service.client.dto.ProcessInstanceDto;
+import com.example.orderfulfilment.service.entity.NotificationPreference;
+import com.example.orderfulfilment.service.entity.Order;
+import com.example.orderfulfilment.service.entity.OrderStatus;
+import com.example.orderfulfilment.service.event.OrderFulfilledEvent;
+import com.example.orderfulfilment.service.exception.InvalidStatusTransitionException;
+import com.example.orderfulfilment.service.exception.OrderNotFoundException;
+import com.example.orderfulfilment.service.repository.OrderRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.util.*;
+
+/**
+ * Core domain service for order lifecycle management.
+ *
+ * Design patterns:
+ *  - Facade: single entry point over JPA + Camunda + event publishing
+ *  - State Machine: updateStatus() enforces valid transitions
+ *  - Factory Method: buildOrder() creates Order from raw parameters
+ *  - Observer: publishes OrderFulfilledEvent on terminal FULFILLED transition
+ */
+@Service
+@RequiredArgsConstructor
+<span class="fc" id="L34">@Slf4j</span>
+public class OrderService {
+
+    private static final String PROCESS_KEY = &quot;order-fulfilment&quot;;
+
+    /**
+     * Valid state transitions. Any transition NOT in this map is rejected.
+     */
+<span class="fc" id="L42">    private static final Map&lt;OrderStatus, Set&lt;OrderStatus&gt;&gt; VALID_TRANSITIONS = Map.of(</span>
+<span class="fc" id="L43">        OrderStatus.RECEIVED,         Set.of(OrderStatus.VALIDATING, OrderStatus.REJECTED),</span>
+<span class="fc" id="L44">        OrderStatus.VALIDATING,       Set.of(OrderStatus.AUTO_APPROVED, OrderStatus.PENDING_OVERRIDE, OrderStatus.REJECTED),</span>
+<span class="fc" id="L45">        OrderStatus.AUTO_APPROVED,    Set.of(OrderStatus.FULFILLED),</span>
+<span class="fc" id="L46">        OrderStatus.PENDING_OVERRIDE, Set.of(OrderStatus.APPROVED, OrderStatus.REJECTED, OrderStatus.AUTO_CANCELLED),</span>
+<span class="fc" id="L47">        OrderStatus.APPROVED,         Set.of(OrderStatus.FULFILLED),</span>
+<span class="fc" id="L48">        OrderStatus.REJECTED,         Set.of(),</span>
+<span class="fc" id="L49">        OrderStatus.AUTO_CANCELLED,   Set.of(),</span>
+<span class="fc" id="L50">        OrderStatus.FULFILLED,        Set.of()</span>
+    );
+
+    private final OrderRepository          orderRepository;
+    private final CamundaRestClient        camundaRestClient;
+    private final ApplicationEventPublisher eventPublisher;
+
+    @Value(&quot;${order.timer-duration:PT10M}&quot;)
+    private String timerDuration;
+
+    // -------------------------------------------------------------------------
+    // Create
+    // -------------------------------------------------------------------------
+
+    /**
+     * Persist a new order and start its Camunda process instance.
+     * Returns the saved order with the assigned processInstanceId.
+     */
+    @Transactional
+    public Order createOrder(String customerId, String customerName,
+                             BigDecimal amount, NotificationPreference notificationPreference) {
+<span class="fc" id="L71">        Order order = Order.builder()</span>
+<span class="fc" id="L72">                .id(UUID.randomUUID())</span>
+<span class="fc" id="L73">                .customerId(customerId)</span>
+<span class="fc" id="L74">                .customerName(customerName)</span>
+<span class="fc" id="L75">                .amount(amount)</span>
+<span class="fc" id="L76">                .notificationPreference(notificationPreference)</span>
+<span class="fc" id="L77">                .status(OrderStatus.RECEIVED)</span>
+<span class="fc" id="L78">                .build();</span>
+
+<span class="fc" id="L80">        order = orderRepository.save(order);</span>
+<span class="fc" id="L81">        log.info(&quot;Order {} created with status RECEIVED&quot;, order.getId());</span>
+
+        // Start Camunda process — circuit breaker handles engine unavailability
+<span class="fc" id="L84">        Map&lt;String, Object&gt; variables = buildProcessVariables(order);</span>
+<span class="fc" id="L85">        ProcessInstanceDto instance = camundaRestClient.startProcess(PROCESS_KEY, variables);</span>
+
+<span class="fc" id="L87">        order.setProcessInstanceId(instance.getId());</span>
+<span class="fc" id="L88">        order = orderRepository.save(order);</span>
+<span class="fc" id="L89">        log.info(&quot;Process instance {} started for order {}&quot;, instance.getId(), order.getId());</span>
+
+<span class="fc" id="L91">        return order;</span>
+    }
+
+    // -------------------------------------------------------------------------
+    // Status Transitions
+    // -------------------------------------------------------------------------
+
+    /**
+     * Update order status with transition validation and optimistic lock retry.
+     * Publishes OrderFulfilledEvent on terminal FULFILLED transition.
+     */
+    @Transactional
+    public Order updateStatus(UUID orderId, OrderStatus newStatus, String reason) {
+<span class="fc" id="L104">        Order order = findById(orderId);</span>
+<span class="fc" id="L105">        validateTransition(order.getStatus(), newStatus);</span>
+
+<span class="fc" id="L107">        order.setStatus(newStatus);</span>
+<span class="pc bpc" id="L108" title="2 of 4 branches missed.">        if (reason != null &amp;&amp; !reason.isBlank()) {</span>
+<span class="fc" id="L109">            order.setDecisionReason(reason);</span>
+        }
+
+        try {
+<span class="fc" id="L113">            order = orderRepository.save(order);</span>
+<span class="fc" id="L114">            log.info(&quot;Order {} status: {} -&gt; {}&quot;, orderId, order.getStatus(), newStatus);</span>
+<span class="nc" id="L115">        } catch (ObjectOptimisticLockingFailureException ex) {</span>
+<span class="nc" id="L116">            log.warn(&quot;Optimistic lock conflict on order {} — reloading and retrying&quot;, orderId);</span>
+            // Reload and retry once — concurrent worker already updated status
+<span class="nc" id="L118">            order = findById(orderId);</span>
+<span class="nc bnc" id="L119" title="All 2 branches missed.">            if (order.getStatus() != newStatus) {</span>
+<span class="nc" id="L120">                validateTransition(order.getStatus(), newStatus);</span>
+<span class="nc" id="L121">                order.setStatus(newStatus);</span>
+<span class="nc bnc" id="L122" title="All 4 branches missed.">                if (reason != null &amp;&amp; !reason.isBlank()) {</span>
+<span class="nc" id="L123">                    order.setDecisionReason(reason);</span>
+                }
+<span class="nc" id="L125">                order = orderRepository.save(order);</span>
+            }
+<span class="fc" id="L127">        }</span>
+
+<span class="fc bfc" id="L129" title="All 2 branches covered.">        if (newStatus == OrderStatus.FULFILLED) {</span>
+<span class="fc" id="L130">            eventPublisher.publishEvent(new OrderFulfilledEvent(</span>
+<span class="fc" id="L131">                    this, order.getId(), order.getCustomerId(),</span>
+<span class="fc" id="L132">                    order.getCustomerName(), order.getAmount()));</span>
+<span class="fc" id="L133">            log.info(&quot;OrderFulfilledEvent published for order {}&quot;, orderId);</span>
+        }
+
+<span class="fc" id="L136">        return order;</span>
+    }
+
+    /**
+     * Update order status by Camunda process instance ID.
+     * Used by external task workers that only have the processInstanceId.
+     */
+    @Transactional
+    public Order updateStatusByProcessInstance(String processInstanceId,
+                                               OrderStatus newStatus, String reason) {
+<span class="nc" id="L146">        Order order = orderRepository.findByProcessInstanceId(processInstanceId)</span>
+<span class="nc" id="L147">                .orElseThrow(() -&gt; new OrderNotFoundException(processInstanceId));</span>
+<span class="nc" id="L148">        return updateStatus(order.getId(), newStatus, reason);</span>
+    }
+
+    // -------------------------------------------------------------------------
+    // Message Correlation
+    // -------------------------------------------------------------------------
+
+    public void correlateCustomerPriorityMessage(UUID orderId) {
+<span class="nc" id="L156">        Order order = findById(orderId);</span>
+<span class="nc bnc" id="L157" title="All 2 branches missed.">        if (order.getProcessInstanceId() == null) {</span>
+<span class="nc" id="L158">            throw new IllegalStateException(&quot;Order &quot; + orderId + &quot; has no running process instance&quot;);</span>
+        }
+<span class="nc" id="L160">        log.info(&quot;Correlating CustomerUpdatedPriority message for order {}&quot;, orderId);</span>
+<span class="nc" id="L161">        camundaRestClient.correlateMessage(</span>
+<span class="nc" id="L162">                &quot;CustomerUpdatedPriority&quot;, &quot;orderId&quot;, orderId.toString());</span>
+<span class="nc" id="L163">    }</span>
+
+    // -------------------------------------------------------------------------
+    // Queries
+    // -------------------------------------------------------------------------
+
+    @Transactional(readOnly = true)
+    public List&lt;Order&gt; findAll() {
+<span class="nc" id="L171">        return orderRepository.findAllByOrderByCreatedAtDesc();</span>
+    }
+
+    @Transactional(readOnly = true)
+    public Order findById(UUID id) {
+<span class="fc" id="L176">        return orderRepository.findById(id)</span>
+<span class="fc" id="L177">                .orElseThrow(() -&gt; new OrderNotFoundException(id));</span>
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
+
+    private Map&lt;String, Object&gt; buildProcessVariables(Order order) {
+<span class="fc" id="L185">        Map&lt;String, Object&gt; vars = new HashMap&lt;&gt;();</span>
+<span class="fc" id="L186">        vars.put(&quot;orderId&quot;,                 order.getId().toString());</span>
+<span class="fc" id="L187">        vars.put(&quot;customerId&quot;,              order.getCustomerId());</span>
+<span class="fc" id="L188">        vars.put(&quot;customerName&quot;,            order.getCustomerName());</span>
+<span class="fc" id="L189">        vars.put(&quot;amount&quot;,                  order.getAmount().doubleValue());</span>
+<span class="fc" id="L190">        vars.put(&quot;notificationPreference&quot;,  order.getNotificationPreference().name());</span>
+<span class="fc" id="L191">        vars.put(&quot;timerDuration&quot;,           timerDuration);</span>
+<span class="fc" id="L192">        return vars;</span>
+    }
+
+    private void validateTransition(OrderStatus from, OrderStatus to) {
+<span class="fc" id="L196">        Set&lt;OrderStatus&gt; allowed = VALID_TRANSITIONS.getOrDefault(from, Set.of());</span>
+<span class="fc bfc" id="L197" title="All 2 branches covered.">        if (!allowed.contains(to)) {</span>
+<span class="fc" id="L198">            throw new InvalidStatusTransitionException(from, to);</span>
+        }
+<span class="fc" id="L200">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

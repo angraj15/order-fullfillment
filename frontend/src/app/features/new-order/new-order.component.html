@@ -1,0 +1,67 @@
+<mat-card>
+  <mat-card-header>
+    <mat-card-title>Submit New Order</mat-card-title>
+    <mat-card-subtitle>Simulates an order arriving via webhook from a sales channel</mat-card-subtitle>
+  </mat-card-header>
+
+  <mat-card-content>
+    <form [formGroup]="form" (ngSubmit)="submit()" class="order-form">
+
+      <mat-form-field appearance="outline">
+        <mat-label>Customer ID</mat-label>
+        <input matInput formControlName="customerId" placeholder="e.g. CUST-001">
+        @if (form.controls.customerId.hasError('required') && form.controls.customerId.touched) {
+          <mat-error>Customer ID is required</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Customer Name</mat-label>
+        <input matInput formControlName="customerName" placeholder="e.g. Alice Smith">
+        @if (form.controls.customerName.hasError('required') && form.controls.customerName.touched) {
+          <mat-error>Customer name is required</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Amount (EUR)</mat-label>
+        <input matInput type="number" formControlName="amount" placeholder="e.g. 1500.00">
+        @if (form.controls.amount.hasError('required') && form.controls.amount.touched) {
+          <mat-error>Amount is required</mat-error>
+        }
+        @if (form.controls.amount.hasError('min')) {
+          <mat-error>Amount must be greater than 0</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Notification Preference</mat-label>
+        <mat-select formControlName="notificationPreference">
+          @for (pref of preferences; track pref) {
+            <mat-option [value]="pref">{{ pref }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      <button mat-raised-button color="primary" type="submit"
+              [disabled]="submitting()">
+        @if (submitting()) {
+          <mat-spinner diameter="20"></mat-spinner>
+        } @else {
+          Submit Order
+        }
+      </button>
+
+    </form>
+  </mat-card-content>
+</mat-card>
+
+<style>
+  .order-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    max-width: 400px;
+    margin-top: 16px;
+  }
+</style>

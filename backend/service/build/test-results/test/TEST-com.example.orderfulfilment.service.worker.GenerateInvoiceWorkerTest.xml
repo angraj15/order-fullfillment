@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="GenerateInvoiceWorker" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-07-14T08:19:15" hostname="Angrajs-MacBook-Air.local" time="0.089">
+  <properties/>
+  <testcase name="successful execution should complete with invoice number and timestamp" classname="com.example.orderfulfilment.service.worker.GenerateInvoiceWorkerTest" time="0.084"/>
+  <testcase name="topic name should be generate-invoice" classname="com.example.orderfulfilment.service.worker.GenerateInvoiceWorkerTest" time="0.001"/>
+  <testcase name="handles null orderId gracefully by still completing" classname="com.example.orderfulfilment.service.worker.GenerateInvoiceWorkerTest" time="0.002"/>
+  <system-out><![CDATA[13:49:15.580 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=generate-invoice] START orderId=c8bdc882-9e5a-4ea1-8830-19db60d5a759 taskId=null
+13:49:15.581 [Test worker] INFO com.example.orderfulfilment.service.worker.GenerateInvoiceWorker -- [GenerateInvoice] Generating invoice INV-1784017155581 for orderId=c8bdc882-9e5a-4ea1-8830-19db60d5a759 customerId=CUST-001 amount=750.0
+13:49:15.582 [Test worker] INFO com.example.orderfulfilment.service.worker.GenerateInvoiceWorker -- [GenerateInvoice] Invoice INV-1784017155581 generated at 2026-07-14T08:19:15.582209Z for orderId=c8bdc882-9e5a-4ea1-8830-19db60d5a759
+13:49:15.582 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=generate-invoice] COMPLETE orderId=c8bdc882-9e5a-4ea1-8830-19db60d5a759
+13:49:15.589 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=generate-invoice] START orderId=null taskId=null
+13:49:15.590 [Test worker] INFO com.example.orderfulfilment.service.worker.GenerateInvoiceWorker -- [GenerateInvoice] Generating invoice INV-1784017155590 for orderId=null customerId=null amount=null
+13:49:15.590 [Test worker] INFO com.example.orderfulfilment.service.worker.GenerateInvoiceWorker -- [GenerateInvoice] Invoice INV-1784017155590 generated at 2026-07-14T08:19:15.590360Z for orderId=null
+13:49:15.590 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=generate-invoice] COMPLETE orderId=null
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

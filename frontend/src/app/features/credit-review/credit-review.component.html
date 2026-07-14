@@ -1,0 +1,72 @@
+<div class="review-header">
+  <h2>Credit Override Review</h2>
+  <button mat-raised-button (click)="loadTasks()" [disabled]="loading()">Refresh</button>
+</div>
+
+@if (loading()) {
+  <mat-spinner diameter="40" style="margin: 40px auto;"></mat-spinner>
+} @else {
+  <table mat-table [dataSource]="tasks()" class="review-table">
+
+    <ng-container matColumnDef="orderId">
+      <th mat-header-cell *matHeaderCellDef>Order ID</th>
+      <td mat-cell *matCellDef="let task">{{ task.orderId.substring(0, 8) }}...</td>
+    </ng-container>
+
+    <ng-container matColumnDef="customerName">
+      <th mat-header-cell *matHeaderCellDef>Customer</th>
+      <td mat-cell *matCellDef="let task">{{ task.customerName }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="amount">
+      <th mat-header-cell *matHeaderCellDef>Amount</th>
+      <td mat-cell *matCellDef="let task">{{ task.amount | currency:'EUR' }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="createdAt">
+      <th mat-header-cell *matHeaderCellDef>Created</th>
+      <td mat-cell *matCellDef="let task">{{ task.createdAt | date:'short' }}</td>
+    </ng-container>
+
+    <ng-container matColumnDef="comment">
+      <th mat-header-cell *matHeaderCellDef>Comment</th>
+      <td mat-cell *matCellDef="let task">
+        <mat-form-field appearance="outline" style="width: 200px;">
+          <input matInput [formControl]="comments[task.taskId]" placeholder="Add comment...">
+        </mat-form-field>
+      </td>
+    </ng-container>
+
+    <ng-container matColumnDef="actions">
+      <th mat-header-cell *matHeaderCellDef>Decision</th>
+      <td mat-cell *matCellDef="let task">
+        <button mat-raised-button color="primary" (click)="complete(task.taskId, true)"
+                style="margin-right: 8px;">
+          Approve
+        </button>
+        <button mat-raised-button color="warn" (click)="complete(task.taskId, false)">
+          Reject
+        </button>
+      </td>
+    </ng-container>
+
+    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+    <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+  </table>
+
+  @if (tasks().length === 0) {
+    <p style="text-align: center; margin-top: 24px; color: #666;">
+      No pending credit overrides. Orders over EUR 1,000 will appear here for review.
+    </p>
+  }
+}
+
+<style>
+  .review-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .review-table { width: 100%; }
+</style>

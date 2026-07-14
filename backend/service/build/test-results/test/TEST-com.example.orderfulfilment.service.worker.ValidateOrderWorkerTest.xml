@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="ValidateOrderWorker" tests="6" skipped="0" failures="0" errors="0" timestamp="2026-07-14T08:19:15" hostname="Angrajs-MacBook-Air.local" time="0.018">
+  <properties/>
+  <testcase name="blank customerName should return INVALID" classname="com.example.orderfulfilment.service.worker.ValidateOrderWorkerTest" time="0.004"/>
+  <testcase name="validate() method — unit test of pure logic without mocks" classname="com.example.orderfulfilment.service.worker.ValidateOrderWorkerTest" time="0.002"/>
+  <testcase name="valid payload should return VALID result and update status to VALIDATING" classname="com.example.orderfulfilment.service.worker.ValidateOrderWorkerTest" time="0.002"/>
+  <testcase name="zero amount should return INVALID" classname="com.example.orderfulfilment.service.worker.ValidateOrderWorkerTest" time="0.003"/>
+  <testcase name="null customerId should return INVALID" classname="com.example.orderfulfilment.service.worker.ValidateOrderWorkerTest" time="0.003"/>
+  <testcase name="negative amount should return INVALID" classname="com.example.orderfulfilment.service.worker.ValidateOrderWorkerTest" time="0.003"/>
+  <system-out><![CDATA[13:49:15.643 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=validate-order] START orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009 taskId=null
+13:49:15.644 [Test worker] INFO com.example.orderfulfilment.service.worker.ValidateOrderWorker -- [ValidateOrder] orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009 result=INVALID reason='customerName is required'
+13:49:15.645 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=validate-order] COMPLETE orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009
+13:49:15.649 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=validate-order] START orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009 taskId=null
+13:49:15.650 [Test worker] INFO com.example.orderfulfilment.service.worker.ValidateOrderWorker -- [ValidateOrder] orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009 result=VALID reason='Order is valid'
+13:49:15.650 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=validate-order] COMPLETE orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009
+13:49:15.652 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=validate-order] START orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009 taskId=null
+13:49:15.653 [Test worker] INFO com.example.orderfulfilment.service.worker.ValidateOrderWorker -- [ValidateOrder] orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009 result=INVALID reason='amount must be a positive value'
+13:49:15.653 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=validate-order] COMPLETE orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009
+13:49:15.655 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=validate-order] START orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009 taskId=null
+13:49:15.656 [Test worker] INFO com.example.orderfulfilment.service.worker.ValidateOrderWorker -- [ValidateOrder] orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009 result=INVALID reason='customerId is required'
+13:49:15.656 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=validate-order] COMPLETE orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009
+13:49:15.658 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=validate-order] START orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009 taskId=null
+13:49:15.659 [Test worker] INFO com.example.orderfulfilment.service.worker.ValidateOrderWorker -- [ValidateOrder] orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009 result=INVALID reason='amount must be a positive value'
+13:49:15.659 [Test worker] INFO com.example.orderfulfilment.service.worker.BaseExternalTaskWorker -- [Worker=validate-order] COMPLETE orderId=c34322a0-59d6-4c0c-ad80-7fb6da0e1009
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

@@ -1,0 +1,242 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xmlns:camunda="http://camunda.org/schema/1.0/bpmn"
+             targetNamespace="http://example.com/orderfulfilment"
+             exporter="Camunda Modeler"
+             exporterVersion="5.0.0">
+
+  <process id="order-fulfilment" name="Order Fulfilment" isExecutable="true"
+           camunda:historyTimeToLive="180">
+
+    <!-- START EVENT -->
+    <startEvent id="start" name="Order Received">
+      <outgoing>flow_start_to_validate</outgoing>
+    </startEvent>
+
+    <!-- VALIDATE ORDER -->
+    <serviceTask id="task_validate_order" name="Validate Order"
+                 camunda:type="external" camunda:topic="validate-order">
+      <incoming>flow_start_to_validate</incoming>
+      <outgoing>flow_validate_to_xor</outgoing>
+    </serviceTask>
+
+    <!-- XOR GATEWAY: CREDIT DECISION -->
+    <exclusiveGateway id="gw_credit_decision" name="Credit Decision" default="flow_invalid">
+      <incoming>flow_validate_to_xor</incoming>
+      <outgoing>flow_auto_approved</outgoing>
+      <outgoing>flow_override_required</outgoing>
+      <outgoing>flow_invalid</outgoing>
+    </exclusiveGateway>
+
+    <!-- PATH C: INVALID → Order Rejected -->
+    <endEvent id="end_order_rejected_validation" name="Order Rejected">
+      <incoming>flow_invalid</incoming>
+      <incoming>flow_credit_rejected</incoming>
+    </endEvent>
+
+    <!-- PATH B: User Task -->
+    <userTask id="task_approve_credit_override" name="Approve Credit Override"
+              camunda:candidateGroups="credit-officers">
+      <incoming>flow_override_required</incoming>
+      <outgoing>flow_override_decision</outgoing>
+    </userTask>
+
+    <!-- Timer Boundary Event (interrupting) -->
+    <boundaryEvent id="boundary_timer" name="Override Timeout"
+                   attachedToRef="task_approve_credit_override"
+                   cancelActivity="true">
+      <timerEventDefinition>
+        <timeDuration xsi:type="tFormalExpression">${timerDuration}</timeDuration>
+      </timerEventDefinition>
+    </boundaryEvent>
+
+    <!-- Message Boundary Event (non-interrupting) -->
+    <boundaryEvent id="boundary_message_priority" name="Customer Updated Priority"
+                   attachedToRef="task_approve_credit_override"
+                   cancelActivity="false">
+      <messageEventDefinition messageRef="msg_customer_updated_priority"/>
+    </boundaryEvent>
+
+    <!-- Auto-Cancel End Event -->
+    <endEvent id="end_auto_cancel" name="Auto-Cancel Order">
+      <incoming>flow_timer_to_autocancel</incoming>
+    </endEvent>
+
+    <!-- Update SLA Log -->
+    <serviceTask id="task_update_sla_log" name="Update SLA Log"
+                 camunda:type="external" camunda:topic="update-sla-log">
+      <incoming>flow_message_to_sla</incoming>
+      <outgoing>flow_sla_end</outgoing>
+    </serviceTask>
+
+    <endEvent id="end_sla_log" name="SLA Updated">
+      <incoming>flow_sla_end</incoming>
+    </endEvent>
+
+    <!-- XOR after override decision -->
+    <exclusiveGateway id="gw_override_decision" name="Override Decision">
+      <incoming>flow_override_decision</incoming>
+      <outgoing>flow_credit_approved</outgoing>
+      <outgoing>flow_credit_rejected</outgoing>
+    </exclusiveGateway>
+
+    <!-- MERGE: auto-approved and credit-approved join here -->
+    <exclusiveGateway id="gw_credit_merge" name="Credit Paths Merge">
+      <incoming>flow_auto_approved</incoming>
+      <incoming>flow_credit_approved</incoming>
+      <outgoing>flow_to_parallel_split</outgoing>
+    </exclusiveGateway>
+
+    <!-- AND GATEWAY: PARALLEL FULFILMENT -->
+    <parallelGateway id="gw_parallel_split" name="Start Parallel Fulfilment">
+      <incoming>flow_to_parallel_split</incoming>
+      <outgoing>flow_to_reserve_inventory</outgoing>
+      <outgoing>flow_to_generate_invoice</outgoing>
+    </parallelGateway>
+
+    <!-- Branch 1: Reserve Inventory -->
+    <serviceTask id="task_reserve_inventory" name="Reserve Inventory"
+                 camunda:type="external" camunda:topic="reserve-inventory">
+      <incoming>flow_to_reserve_inventory</incoming>
+      <outgoing>flow_inventory_done</outgoing>
+    </serviceTask>
+
+    <!-- Branch 2: Generate Invoice -->
+    <serviceTask id="task_generate_invoice" name="Generate Invoice"
+                 camunda:type="external" camunda:topic="generate-invoice">
+      <incoming>flow_to_generate_invoice</incoming>
+      <outgoing>flow_invoice_done</outgoing>
+    </serviceTask>
+
+    <!-- AND Join -->
+    <parallelGateway id="gw_parallel_join" name="Join Parallel Fulfilment">
+      <incoming>flow_inventory_done</incoming>
+      <incoming>flow_invoice_done</incoming>
+      <outgoing>flow_to_notification_gw</outgoing>
+    </parallelGateway>
+
+    <!-- OR GATEWAY: NOTIFICATION -->
+    <inclusiveGateway id="gw_notification_split" name="Notification Split">
+      <incoming>flow_to_notification_gw</incoming>
+      <outgoing>flow_to_send_email</outgoing>
+      <outgoing>flow_to_send_sms</outgoing>
+    </inclusiveGateway>
+
+    <!-- Send Email -->
+    <serviceTask id="task_send_email" name="Send Email"
+                 camunda:type="external" camunda:topic="send-email">
+      <incoming>flow_to_send_email</incoming>
+      <outgoing>flow_email_done</outgoing>
+    </serviceTask>
+
+    <!-- Send SMS -->
+    <serviceTask id="task_send_sms" name="Send SMS"
+                 camunda:type="external" camunda:topic="send-sms">
+      <incoming>flow_to_send_sms</incoming>
+      <outgoing>flow_sms_done</outgoing>
+    </serviceTask>
+
+    <!-- OR Join -->
+    <inclusiveGateway id="gw_notification_join" name="Notification Join">
+      <incoming>flow_email_done</incoming>
+      <incoming>flow_sms_done</incoming>
+      <outgoing>flow_to_fulfilled</outgoing>
+    </inclusiveGateway>
+
+    <!-- END EVENT: FULFILLED -->
+    <endEvent id="end_order_fulfilled" name="Order Fulfilled">
+      <incoming>flow_to_fulfilled</incoming>
+    </endEvent>
+
+    <!-- SEQUENCE FLOWS -->
+    <sequenceFlow id="flow_start_to_validate"    sourceRef="start"                        targetRef="task_validate_order"/>
+    <sequenceFlow id="flow_validate_to_xor"      sourceRef="task_validate_order"          targetRef="gw_credit_decision"/>
+    <sequenceFlow id="flow_auto_approved"         sourceRef="gw_credit_decision"           targetRef="gw_credit_merge">
+      <conditionExpression xsi:type="tFormalExpression">${validationResult == 'VALID' &amp;&amp; amount &lt;= 1000}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_override_required"     sourceRef="gw_credit_decision"           targetRef="task_approve_credit_override">
+      <conditionExpression xsi:type="tFormalExpression">${validationResult == 'VALID' &amp;&amp; amount &gt; 1000}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_invalid"               sourceRef="gw_credit_decision"           targetRef="end_order_rejected_validation"/>
+    <sequenceFlow id="flow_timer_to_autocancel"   sourceRef="boundary_timer"               targetRef="end_auto_cancel"/>
+    <sequenceFlow id="flow_message_to_sla"        sourceRef="boundary_message_priority"    targetRef="task_update_sla_log"/>
+    <sequenceFlow id="flow_sla_end"               sourceRef="task_update_sla_log"          targetRef="end_sla_log"/>
+    <sequenceFlow id="flow_override_decision"     sourceRef="task_approve_credit_override" targetRef="gw_override_decision"/>
+    <sequenceFlow id="flow_credit_approved"       sourceRef="gw_override_decision"         targetRef="gw_credit_merge">
+      <conditionExpression xsi:type="tFormalExpression">${approved == true}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_credit_rejected"       sourceRef="gw_override_decision"         targetRef="end_order_rejected_validation">
+      <conditionExpression xsi:type="tFormalExpression">${approved == false}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_to_parallel_split"     sourceRef="gw_credit_merge"              targetRef="gw_parallel_split"/>
+    <sequenceFlow id="flow_to_reserve_inventory"  sourceRef="gw_parallel_split"            targetRef="task_reserve_inventory"/>
+    <sequenceFlow id="flow_to_generate_invoice"   sourceRef="gw_parallel_split"            targetRef="task_generate_invoice"/>
+    <sequenceFlow id="flow_inventory_done"        sourceRef="task_reserve_inventory"       targetRef="gw_parallel_join"/>
+    <sequenceFlow id="flow_invoice_done"          sourceRef="task_generate_invoice"        targetRef="gw_parallel_join"/>
+    <sequenceFlow id="flow_to_notification_gw"    sourceRef="gw_parallel_join"             targetRef="gw_notification_split"/>
+    <sequenceFlow id="flow_to_send_email"         sourceRef="gw_notification_split"        targetRef="task_send_email">
+      <conditionExpression xsi:type="tFormalExpression">${notificationPreference == 'EMAIL' || notificationPreference == 'BOTH'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_to_send_sms"           sourceRef="gw_notification_split"        targetRef="task_send_sms">
+      <conditionExpression xsi:type="tFormalExpression">${notificationPreference == 'SMS' || notificationPreference == 'BOTH'}</conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="flow_email_done"            sourceRef="task_send_email"              targetRef="gw_notification_join"/>
+    <sequenceFlow id="flow_sms_done"              sourceRef="task_send_sms"                targetRef="gw_notification_join"/>
+    <sequenceFlow id="flow_to_fulfilled"          sourceRef="gw_notification_join"         targetRef="end_order_fulfilled"/>
+
+  </process>
+
+  <!-- Message Definition -->
+  <message id="msg_customer_updated_priority" name="CustomerUpdatedPriority"/>
+
+  <!-- BPMN Diagram Interchange — required for Camunda Cockpit rendering -->
+  <bpmndi:BPMNDiagram xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="BPMNPlane_1" bpmnElement="order-fulfilment">
+      <bpmndi:BPMNShape id="start_di" bpmnElement="start"><dc:Bounds x="152" y="232" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_validate_order_di" bpmnElement="task_validate_order"><dc:Bounds x="240" y="210" width="100" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="gw_credit_decision_di" bpmnElement="gw_credit_decision" isMarkerVisible="true"><dc:Bounds x="395" y="225" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end_order_rejected_di" bpmnElement="end_order_rejected_validation"><dc:Bounds x="402" y="392" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_approve_credit_di" bpmnElement="task_approve_credit_override"><dc:Bounds x="510" y="80" width="100" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="boundary_timer_di" bpmnElement="boundary_timer"><dc:Bounds x="542" y="142" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="boundary_msg_di" bpmnElement="boundary_message_priority"><dc:Bounds x="492" y="142" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end_auto_cancel_di" bpmnElement="end_auto_cancel"><dc:Bounds x="542" y="202" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_sla_di" bpmnElement="task_update_sla_log"><dc:Bounds x="460" y="210" width="100" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end_sla_di" bpmnElement="end_sla_log"><dc:Bounds x="492" y="322" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="gw_override_decision_di" bpmnElement="gw_override_decision" isMarkerVisible="true"><dc:Bounds x="665" y="95" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="gw_credit_merge_di" bpmnElement="gw_credit_merge" isMarkerVisible="true"><dc:Bounds x="745" y="225" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="gw_parallel_split_di" bpmnElement="gw_parallel_split"><dc:Bounds x="845" y="225" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_reserve_di" bpmnElement="task_reserve_inventory"><dc:Bounds x="940" y="150" width="100" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_invoice_di" bpmnElement="task_generate_invoice"><dc:Bounds x="940" y="280" width="100" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="gw_parallel_join_di" bpmnElement="gw_parallel_join"><dc:Bounds x="1095" y="225" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="gw_notification_split_di" bpmnElement="gw_notification_split"><dc:Bounds x="1195" y="225" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_email_di" bpmnElement="task_send_email"><dc:Bounds x="1290" y="150" width="100" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="task_sms_di" bpmnElement="task_send_sms"><dc:Bounds x="1290" y="280" width="100" height="80"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="gw_notification_join_di" bpmnElement="gw_notification_join"><dc:Bounds x="1445" y="225" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="end_fulfilled_di" bpmnElement="end_order_fulfilled"><dc:Bounds x="1552" y="232" width="36" height="36"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="flow_start_to_validate_di" bpmnElement="flow_start_to_validate"><di:waypoint x="188" y="250"/><di:waypoint x="240" y="250"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_validate_to_xor_di" bpmnElement="flow_validate_to_xor"><di:waypoint x="340" y="250"/><di:waypoint x="395" y="250"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_auto_approved_di" bpmnElement="flow_auto_approved"><di:waypoint x="445" y="250"/><di:waypoint x="745" y="250"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_override_required_di" bpmnElement="flow_override_required"><di:waypoint x="420" y="225"/><di:waypoint x="420" y="120"/><di:waypoint x="510" y="120"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_invalid_di" bpmnElement="flow_invalid"><di:waypoint x="420" y="275"/><di:waypoint x="420" y="392"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_timer_di" bpmnElement="flow_timer_to_autocancel"><di:waypoint x="560" y="178"/><di:waypoint x="560" y="202"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_msg_sla_di" bpmnElement="flow_message_to_sla"><di:waypoint x="510" y="178"/><di:waypoint x="510" y="210"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_sla_end_di" bpmnElement="flow_sla_end"><di:waypoint x="510" y="290"/><di:waypoint x="510" y="322"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_override_decision_di" bpmnElement="flow_override_decision"><di:waypoint x="610" y="120"/><di:waypoint x="665" y="120"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_credit_approved_di" bpmnElement="flow_credit_approved"><di:waypoint x="690" y="145"/><di:waypoint x="690" y="250"/><di:waypoint x="745" y="250"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_credit_rejected_di" bpmnElement="flow_credit_rejected"><di:waypoint x="690" y="95"/><di:waypoint x="690" y="60"/><di:waypoint x="420" y="60"/><di:waypoint x="420" y="392"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_to_parallel_split_di" bpmnElement="flow_to_parallel_split"><di:waypoint x="795" y="250"/><di:waypoint x="845" y="250"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_to_reserve_di" bpmnElement="flow_to_reserve_inventory"><di:waypoint x="870" y="225"/><di:waypoint x="870" y="190"/><di:waypoint x="940" y="190"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_to_invoice_di" bpmnElement="flow_to_generate_invoice"><di:waypoint x="870" y="275"/><di:waypoint x="870" y="320"/><di:waypoint x="940" y="320"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_inventory_done_di" bpmnElement="flow_inventory_done"><di:waypoint x="1040" y="190"/><di:waypoint x="1120" y="190"/><di:waypoint x="1120" y="225"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_invoice_done_di" bpmnElement="flow_invoice_done"><di:waypoint x="1040" y="320"/><di:waypoint x="1120" y="320"/><di:waypoint x="1120" y="275"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_to_notif_di" bpmnElement="flow_to_notification_gw"><di:waypoint x="1145" y="250"/><di:waypoint x="1195" y="250"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_to_email_di" bpmnElement="flow_to_send_email"><di:waypoint x="1220" y="225"/><di:waypoint x="1220" y="190"/><di:waypoint x="1290" y="190"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_to_sms_di" bpmnElement="flow_to_send_sms"><di:waypoint x="1220" y="275"/><di:waypoint x="1220" y="320"/><di:waypoint x="1290" y="320"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_email_done_di" bpmnElement="flow_email_done"><di:waypoint x="1390" y="190"/><di:waypoint x="1470" y="190"/><di:waypoint x="1470" y="225"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_sms_done_di" bpmnElement="flow_sms_done"><di:waypoint x="1390" y="320"/><di:waypoint x="1470" y="320"/><di:waypoint x="1470" y="275"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="flow_to_fulfilled_di" bpmnElement="flow_to_fulfilled"><di:waypoint x="1495" y="250"/><di:waypoint x="1552" y="250"/></bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+
+</definitions>

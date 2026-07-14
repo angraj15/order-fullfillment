@@ -1,0 +1,70 @@
+server:
+  port: 8080
+  shutdown: graceful
+
+spring:
+  application:
+    name: order-fulfilment
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: jdbc:h2:mem:orderdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          time_zone: UTC
+  lifecycle:
+    timeout-per-shutdown-phase: 30s
+
+camunda:
+  client:
+    base-url: ${CAMUNDA_URL:http://localhost:8081/engine-rest}
+    worker-id: order-fulfilment-worker-1
+    lock-duration: 30000
+    async-response-timeout: 10000
+    max-tasks: 10
+
+order:
+  timer-duration: ${TIMER_DURATION:PT10M}
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      camunda:
+        sliding-window-size: 10
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        register-health-indicator: true
+  retry:
+    instances:
+      camunda:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,circuitbreakers
+  endpoint:
+    health:
+      show-details: always
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
